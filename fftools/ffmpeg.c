@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2000-2003 Fabrice Bellard
  *
  * This file is part of FFmpeg.
@@ -119,7 +119,8 @@ int        nb_decoders;
 
 #if HAVE_TERMIOS_H
 
-/* init terminal so that we can grab keys */
+/* Initialize terminal in raw mode to allow non-blocking keyboard input for commands */
+
 static struct termios oldtty;
 static int restore_tty;
 #endif
@@ -861,8 +862,7 @@ static int check_keyboard_interaction(int64_t cur_time)
                                 key == 'C');
         } else {
             av_log(NULL, AV_LOG_ERROR,
-                   "Parse error, at least 3 arguments were expected, "
-                   "only %d given in string '%s'\n", n, buf);
+                "Command parse error: expected ≥3 arguments, got %d in '%s'\n", n, buf);
         }
     }
     if (key == '?'){
@@ -881,8 +881,13 @@ static int check_keyboard_interaction(int64_t cur_time)
 }
 
 /*
- * The following code is the main loop of the file converter
- */
+* Main transcoding loop:
+* - reads input streams
+* - applies filters
+* - writes output streams
+* - prints periodic statistics
+* Loop exits when done or on user/system interruption.
+*/
 static int transcode(Scheduler *sch)
 {
     int ret = 0;
@@ -1017,7 +1022,7 @@ int main(int argc, char **argv)
     }
 
     if (nb_output_files <= 0) {
-        av_log(NULL, AV_LOG_FATAL, "At least one output file must be specified\n");
+        av_log(NULL, AV_LOG_FATAL, "No output file specified. Please provide at least one output file.\n");
         ret = 1;
         goto finish;
     }
@@ -1034,9 +1039,10 @@ int main(int argc, char **argv)
         utime = current_time.user_usec - ti.user_usec;
         stime = current_time.sys_usec  - ti.sys_usec;
         rtime = current_time.real_usec - ti.real_usec;
+        // Print benchmark times (user, system, real) in seconds
         av_log(NULL, AV_LOG_INFO,
-               "bench: utime=%0.3fs stime=%0.3fs rtime=%0.3fs\n",
-               utime / 1000000.0, stime / 1000000.0, rtime / 1000000.0);
+            "bench: utime=%0.3fs stime=%0.3fs rtime=%0.3fs\n",
+            utime / 1000000.0, stime / 1000000.0, rtime / 1000000.0);
     }
 
     ret = received_nb_signals                 ? 255 :
